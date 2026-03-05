@@ -5,6 +5,7 @@ import { SearchResultCard } from "@/components/SearchResultCard";
 import { ChatPanel } from "@/components/ChatPanel";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { DocumentsList } from "@/components/DocumentsList";
+import { FileUploadZone } from "@/components/FileUploadZone";
 import { searchDocuments, type SearchResult } from "@/lib/rag-api";
 import { Search, MessageSquare, Database, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -77,6 +78,8 @@ const Index = () => {
         </nav>
 
         <div className="flex-1" />
+
+        <FileUploadZone />
 
         <DocumentsList />
 
