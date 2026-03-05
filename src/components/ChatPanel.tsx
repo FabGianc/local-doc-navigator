@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Loader2, FolderOpen, Bot, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from "react-markdown";
 import { chatWithDocuments, type ChatMessage, type SearchResult } from "@/lib/rag-api";
 import { cn } from "@/lib/utils";
 
@@ -124,7 +125,13 @@ export function ChatPanel({ initialQuery }: ChatPanelProps) {
                       : "bg-chat-assistant text-secondary-foreground"
                   )}
                 >
-                  {msg.content}
+                  {msg.role === "assistant" ? (
+                    <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-2 prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-pre:bg-muted prose-pre:rounded-lg">
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    msg.content
+                  )}
                 </div>
                 {msg.sources && msg.sources.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
