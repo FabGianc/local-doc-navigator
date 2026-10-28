@@ -1,10 +1,12 @@
 """
 RAG Backend — FastAPI + LangChain + ChromaDB + Ollama
-Esecuzione: uvicorn main:app --host 0.0.0.0 --port 8000
+Esecuzione (solo locale): uvicorn main:app --host 127.0.0.1 --port 8000
+Uso in LAN: vedi README (CORS_ORIGINS e --host 0.0.0.0)
 """
 
 import os
 import hashlib
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -29,6 +31,16 @@ EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
 CHAT_MODEL = os.getenv("CHAT_MODEL", "llama3")
 CHROMA_DIR = os.getenv("CHROMA_DIR", "./chroma_db")
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
+# /api/ingest indicizza solo file contenuti in questa cartella
+INGEST_ROOT = Path(os.getenv("INGEST_ROOT", "./docs")).resolve()
+# Origini web autorizzate a chiamare l'API (separate da virgola)
+CORS_ORIGINS = [
+    o.strip()
+    for o in os.getenv(
+        "CORS_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080"
+    ).split(",")
+    if o.strip()
+]
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -50,9 +62,9 @@ app = FastAPI(title="RAG Search API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=CORS_ORIGINS,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 # ── Models ──────────────────────────────────────────────
@@ -93,10 +105,12 @@ def load_and_index(file_path: str) -> int:
     documents = loader.load()
 
     # Attach metadata
+    indexed_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     for doc in documents:
         doc.metadata["file_path"] = str(path.absolute())
         doc.metadata["file_name"] = path.name
         doc.metadata["file_type"] = ext.lstrip(".")
+        doc.metadata["indexed_at"] = indexed_at
 
     chunks = text_splitter.split_documents(documents)
 
@@ -178,8 +192,14 @@ DOCUMENTI:
 
 @app.post("/api/ingest")
 async def ingest(req: IngestRequest):
+    target = Path(req.file_path).resolve()
+    if not target.is_relative_to(INGEST_ROOT):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Percorso non consentito: sono indicizzabili solo i file in {INGEST_ROOT}",
+        )
     try:
-        count = load_and_index(req.file_path)
+        count = load_and_index(str(target))
         return {"status": "ok", "chunks": count, "file_path": req.file_path}
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -190,17 +210,22 @@ async def ingest(req: IngestRequest):
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...)):
     """Upload a file and ingest it into the vector store."""
-    ext = Path(file.filename).suffix.lower()
+    # Solo il nome del file, senza percorsi: evita scritture fuori da UPLOAD_DIR
+    safe_name = Path(file.filename or "").name
+    if not safe_name or safe_name in (".", ".."):
+        raise HTTPException(400, "Nome file non valido")
+
+    ext = Path(safe_name).suffix.lower()
     if ext not in LOADERS:
         raise HTTPException(400, f"Tipo file non supportato: {ext}. Supportati: {list(LOADERS.keys())}")
 
-    dest = Path(UPLOAD_DIR) / file.filename
+    dest = Path(UPLOAD_DIR) / safe_name
     with open(dest, "wb") as f:
         content = await file.read()
         f.write(content)
 
     count = load_and_index(str(dest))
-    return {"status": "ok", "file_name": file.filename, "chunks": count}
+    return {"status": "ok", "file_name": safe_name, "chunks": count}
 
 
 @app.get("/api/documents")

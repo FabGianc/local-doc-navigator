@@ -17,7 +17,7 @@ cd backend
 pip install -r requirements.txt
 
 # 3. Avvia il server
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 ## Variabili d'ambiente (opzionali)
@@ -29,6 +29,8 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 | `CHAT_MODEL` | `llama3` | Modello LLM per la chat |
 | `CHROMA_DIR` | `./chroma_db` | Directory database vettoriale |
 | `UPLOAD_DIR` | `./uploads` | Directory upload file |
+| `INGEST_ROOT` | `./docs` | Unica cartella indicizzabile via `/api/ingest` |
+| `CORS_ORIGINS` | `http://localhost:8080,http://127.0.0.1:8080` | Origini autorizzate (separate da virgola) |
 
 ## API Endpoints
 
@@ -37,6 +39,9 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 | GET | `/api/health` | Health check |
 | POST | `/api/search` | Ricerca semantica |
 | POST | `/api/chat` | Chat RAG con contesto |
-| POST | `/api/ingest` | Indicizza file da path locale |
+| POST | `/api/ingest` | Indicizza un file presente in `INGEST_ROOT` |
 | POST | `/api/upload` | Upload + indicizzazione file |
 | GET | `/api/documents` | Lista documenti indicizzati |
+
+
+Per l'uso in rete locale e le note di sicurezza vedere il [README principale](../README.md).
