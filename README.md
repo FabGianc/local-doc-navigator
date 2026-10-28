@@ -120,3 +120,8 @@ Il frontend è stato inizialmente generato con [Lovable](https://lovable.dev).
 ## Autore
 
 Pierfabrizio Giancola
+
+## Licenza
+
+Distribuito con licenza [GNU General Public License v3.0](LICENSE).
+Copyright (C) 2026 Pierfabrizio Giancola.
